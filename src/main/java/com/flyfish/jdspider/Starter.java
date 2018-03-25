@@ -8,6 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Scanner;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created with IDEA by tiaotiao
@@ -17,11 +19,12 @@ import java.util.Scanner;
  */
 public class Starter {
     private static final Logger logger = LoggerFactory.getLogger(Starter.class);
+    private static AtomicInteger counter = new AtomicInteger(0);
 
     public static void main(String[] args) throws Exception {
 
         // 创建今日商品目录
-        String dirPath = "商品列表_" + DateUtil.getToday(DateUtil.NS_DAY_ALL_NUM);
+        final String dirPath = "商品列表_" + DateUtil.getToday(DateUtil.NS_DAY_ALL_NUM);
         FileUtil.createFolder(dirPath);
 
         if (args != null && args.length > 0) {
@@ -31,13 +34,24 @@ public class Starter {
                 logger.info("开始处理[{}]…", filename);
                 String[] urlArray = urls.split(" ");
 
-                int counter = 0;
-                for (String url : urlArray) {
-                    if (SpiderService.seeker(url, dirPath)) {
-                        counter++;
-                    }
+                Executor executor = new ThreadPoolExecutor(5, 50, 10, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
+                final CountDownLatch countDownLatch = new CountDownLatch(urlArray.length);
+
+                for (final String url : urlArray) {
+                    executor.execute(new Runnable() {
+                        public void run() {
+                            logger.info("处理[{}]…", url);
+                            if (SpiderService.seeker(url, dirPath)) {
+                                counter.incrementAndGet();
+                            }
+                            countDownLatch.countDown();
+                        }
+                    });
                 }
-                logger.info("本次共处理商品{}个，成功{]个.", urlArray.length, counter);
+
+                countDownLatch.await();
+                logger.info("本次共处理商品{}个，成功{}个.", urlArray.length, counter.get());
+                System.exit(0);
             } else {
                 System.out.println("找不到url列表文件或文件为空！");
             }
