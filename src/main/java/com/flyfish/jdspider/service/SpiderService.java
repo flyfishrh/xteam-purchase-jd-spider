@@ -27,11 +27,17 @@ public class SpiderService {
     private static final Logger logger = LoggerFactory.getLogger(SpiderService.class);
 
     private static final Pattern TITLE_PATTERN = Pattern.compile( "<span\\s*class=\"(\\s*title-text\\s*|\\s*jx-title-text\\s*){1,4}\"\\s*>(.*?)</span>");
-    private static final Pattern BIG_PRICE_PATTERN = Pattern.compile("<span\\s*class=\"\\s*big-price\\s*\">(.*?)</span>");
-    private static final Pattern SMALL_PRICE_PATTERN = Pattern.compile("<span\\s*class=\"\\s*small-price\\s*\">(.*?)</span>");
+    private static final Pattern BIG_PRICE_PATTERN = Pattern.compile("<span\\s*class=\"\\s*big-price\\s*\"\\s*>(.*?)</span>");
+    private static final Pattern SMALL_PRICE_PATTERN = Pattern.compile("<span\\s*class=\"\\s*small-price\\s*\"\\s*>(.*?)</span>");
     private static final Pattern IMAGE_CONTENT_PATTERN = Pattern.compile("<div\\s*class=\"\\s*scroll-imgs\\s*\"\\s*>([\\S\\s]*?)</ul>");
     private static final Pattern IMAGE_PATTERN = Pattern.compile("<img([\\s\\S]*?)src=\"(.*?)\"([\\s\\S]*?)>");
     private static final Pattern HIDE_IMAGE_PATTERN = Pattern.compile("imgsrc=\"(.*?)\"");
+    private static final Pattern ITEM_ID_PATTERN = Pattern.compile("(\\d*).html");
+
+//    public static final Pattern PC_TITLE_PATTERN = Pattern.compile("<div\\s*class=\"\\s*sku-name\\s*\">([\\S\\s].*)</div>");
+//    public static final Pattern PC_PRICE_PATTERN = Pattern.compile("<span\\s*class=\"(\\s*price\\s*|\\s*J-p-(.*)\\s*){1,4}\"\\s*>(.*?)</span>");
+//    public static final String PC_IMAGE_URL_PREFIX = "https://img14.360buyimg.com/n1/s800x800_";
+
 
     /**
      * 爬虫逻辑
@@ -43,15 +49,26 @@ public class SpiderService {
                 && (url.startsWith("http://") || url.startsWith("https://"))) {
 
             Map<String, String> headers = new HashMap<String, String>();
-            headers.put("User-Agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Mobile Safari/537.36");
+            headers.put("user-agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 11_0 like Mac OS X) AppleWebKit/604.1.38 (KHTML, like Gecko) Version/11.0 Mobile/15A372 Safari/604.1");
 
             String html = HttpUtil.httpGet(url, null, headers);
 
-            // 商品名称
+            // 商品名称 先按照移动端处理
             String title = "";
             Matcher matcher = TITLE_PATTERN.matcher(html);
             if (matcher.find()) {
                 title = matcher.group(2);
+            } else {
+                matcher = ITEM_ID_PATTERN.matcher(url);
+                if (matcher.find()) {
+                    String itemId = matcher.group(1);
+                    url = String.format("https://item.m.jd.com/product/%s.html", itemId);
+                    html = HttpUtil.httpGet(url, null, headers);
+                    matcher = TITLE_PATTERN.matcher(html);
+                    if (matcher.find()) {
+                        title = matcher.group(2);
+                    }
+                }
             }
 
             if (StringUtils.isNotBlank(title)) {
@@ -102,16 +119,20 @@ public class SpiderService {
                         FileUtils.writeByteArrayToFile(new File(goodFolder + File.separator + i + ".jpg"), bytes);
                         content += image + "\n";
                     } catch (IOException e) {
-                        logger.error("拉取图片[" + image + "]时发生异常.", e);
+                        logger.error(String.format("拉取[%s]的图片[%s]时发生异常.", title, image), e);
                     }
                 }
 
                 FileUtil.createFile(goodFolder + File.separator + "goods_info.txt", content);
                 return true;
             } else {
+
                 logger.error("商品[{}]的信息无法爬取！", url);
             }
         } else {
+            // 按照PC版处理
+
+
             logger.error("请输入有效的商品url！以http://或https://开头。");
         }
         return false;
