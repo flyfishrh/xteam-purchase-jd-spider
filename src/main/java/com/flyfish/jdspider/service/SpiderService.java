@@ -44,7 +44,7 @@ public class SpiderService {
      * @param url
      * @param folder
      */
-    public static boolean seeker(String url, String folder) {
+    public static boolean seeker(String url, String folder, String imageSize) {
         if (StringUtils.isNotBlank(url)
                 && (url.startsWith("http://") || url.startsWith("https://"))) {
 
@@ -114,6 +114,8 @@ public class SpiderService {
                 int i = 0;
                 for (String image : images) {
                     i++;
+
+                    image = image.replaceAll("/jfs/", "/s" + imageSize + "_jfs/");
                     byte[] bytes = HttpUtil.httpGetAsBytes(image, null, headers);
                     try {
                         FileUtils.writeByteArrayToFile(new File(goodFolder + File.separator + i + ".jpg"), bytes);

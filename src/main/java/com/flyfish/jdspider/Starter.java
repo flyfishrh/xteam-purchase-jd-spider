@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Starter {
     private static final Logger logger = LoggerFactory.getLogger(Starter.class);
     private static AtomicInteger counter = new AtomicInteger(0);
+    public static final String imgSize = "400x400";
 
     public static void main(String[] args) throws Exception {
 
@@ -41,7 +42,7 @@ public class Starter {
                     executor.execute(new Runnable() {
                         public void run() {
                             logger.info("处理[{}]…", url);
-                            if (SpiderService.seeker(url, dirPath)) {
+                            if (SpiderService.seeker(url, dirPath, imgSize)) {
                                 counter.incrementAndGet();
                             }
                             countDownLatch.countDown();
@@ -66,7 +67,7 @@ public class Starter {
                         System.exit(0);
                     }
 
-                    SpiderService.seeker(url, dirPath);
+                    SpiderService.seeker(url, dirPath, imgSize);
                 }
             }
         }
